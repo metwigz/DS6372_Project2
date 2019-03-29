@@ -17,7 +17,7 @@ df.clean <- df.orig
 #NYG vs ARI information (about the NA)
 #https://www.pro-football-reference.com/boxscores/200811230crd.htm
 
-#By logic and the website, down has to be 1 and togo has to be 10
+#By logic and the websites, down has to be 1 and togo has to be 10
 df.clean$down[df.clean$HomeTeam == "ARI" & df.clean$AwayTeam == "NYG" & df.clean$GameDate == 20081123 & df.clean$timerem == 1811] <- 1
 df.clean$togo[df.clean$HomeTeam == "ARI" & df.clean$AwayTeam == "NYG" & df.clean$GameDate == 20081123 & df.clean$timerem == 1811] <- 10
 df.clean$down[df.clean$HomeTeam == "GB" & df.clean$AwayTeam == "DET" & df.clean$GameDate == 20081228 & df.clean$timerem == 1807] <- 1
@@ -32,7 +32,7 @@ df.clean <- df.clean[, c(1:21)]
 #GameData won't help for future predictions
 #Name and Kicker won't help for future predictions
 #season is always 2008
-df.clean <- df[,c(2:10,12,14,16:19,21)]
+df.clean <- df.clean[,c(2:10,12,14,16:19,21)]
 
 pairs(df.clean, gap=0)
 
@@ -42,7 +42,7 @@ pairs(df.clean, gap=0)
 #timerem is correlated with qtr,min,sec
 #homekick is redundant with kickteam/def, I would remove homekick and keep the other two
 
-#-----------CORRELATION OF NUMERIC---------------------------------------------
+#-----------CORRELATION OF CONTINUOUS---------------------------------------------
 library(corrplot)
 df.clean.numeric <- df.clean[, sapply(df.clean, is.numeric)]
 #Correlations of all numeric variables
