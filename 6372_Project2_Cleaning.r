@@ -42,12 +42,16 @@ pairs(df.clean, gap=0)
 #timerem is correlated with qtr,min,sec
 #homekick is redundant with kickteam/def, I would remove homekick and keep the other two
 
+#Make a factor: qtr, down, GOOD
+df.clean$qtr <- as.factor(df.clean$qtr)
+df.clean$down <- as.factor(df.clean$down)
+df.clean$GOOD <- as.factor(df.clean$GOOD)
+
 #-----------CORRELATION OF CONTINUOUS---------------------------------------------
 library(corrplot)
 df.clean.numeric <- df.clean[, sapply(df.clean, is.numeric)]
 #Correlations of all numeric variables
-#NOTE: -c(13) removes the GOOD column
-df.clean.allcor <- cor(df.clean.numeric[,-c(13)], use="pairwise.complete.obs")
+df.clean.allcor <- cor(df.clean.numeric, use="pairwise.complete.obs")
 #The cutoff point for correlation, currently randomly assigned
 corr_amt <- 0.3
 
@@ -82,6 +86,39 @@ df.clean.highcor.matrix <- df.clean.allcor[df.clean.highcor.names, df.clean.high
 #Creates the high correlation graphic
 corrplot.mixed(df.clean.highcor.matrix, tl.col="black", tl.pos = "lt")
 
+#------CORRELATION OF CATEGORICAL------------------------------------------
+#MANTEL-HAENSZEL?
+
+
+#------CORRELATION OF MIXED------------------------------------------------
+library(ggplot2)
+
+df.clean.num1 <- df.clean[, sapply(df.clean, is.numeric)]
+df.clean.cat1 <- df.clean[, sapply(df.clean, is.factor)]
+
+for(i in c(1:ncol(df.clean.num1)) )
+{
+  for(j in c(1:ncol(df.clean.cat1)) )
+  {
+    plot <- ggplot(NULL, aes(df.clean.cat1[,j], df.clean.num1[,i])) +
+      geom_boxplot() +
+      xlab(names(df.clean.cat1)[j]) +
+      ylab(names(df.clean.num1)[i])
+    print(plot)
+  }
+}
+
+#-----LDA after correlation/collinear fixed?--------------------------------
+library(MASS)
+df.clean.lda <- lda(GOOD~., data = df.clean)
+
+#-----Logistic Regression---------------------------------------------------
+#JUST AN EXAMPLE
+df.fit1 <- glm(GOOD~., data = df.clean, family=binomial(link="logit"))
+
+#EXAMPLE STEPWISE
+df.step <- step(df.fit1)
+summary(df.step)
 
 
 
