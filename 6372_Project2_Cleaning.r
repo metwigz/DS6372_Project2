@@ -26,26 +26,69 @@ df.clean$togo[df.clean$HomeTeam == "GB" & df.clean$AwayTeam == "DET" & df.clean$
 #Gets the number of NA's in the dataset
 colSums(is.na(df.clean))
 
-#Remove Missed and Blocked because they are also part of the response
-df.clean <- df.clean[, c(1:21)]
-
-#GameData won't help for future predictions
-#Name and Kicker won't help for future predictions
-#season is always 2008
-df.clean <- df.clean[,c(2:10,12,14,16:19,21)]
-
-pairs(df.clean, gap=0)
-
-#TODO: 
-#ydline and distance are equivelent
-#Season is pointless to include
-#timerem is correlated with qtr,min,sec
-#homekick is redundant with kickteam/def, I would remove homekick and keep the other two
-
-#Make a factor: qtr, down, GOOD
+#Make a factor: qtr, down, GOOD, homekick
 df.clean$qtr <- as.factor(df.clean$qtr)
 df.clean$down <- as.factor(df.clean$down)
 df.clean$GOOD <- as.factor(df.clean$GOOD)
+df.clean$homekick <- as.factor(df.clean$homekick)
+
+#Remove Missed and Blocked because they are also part of the response
+df.clean$Missed <- NULL
+df.clean$Blocked <- NULL
+
+#GameDate won't help for future predictions
+#Name and Kicker won't help for future predictions
+#season is always 2008
+df.clean$GameDate <- NULL
+df.clean$name <- NULL
+df.clean$kicker <- NULL
+df.clean$season <- NULL
+
+#We don't need AwayTeam or HomeTeam
+df.clean$HomeTeam <- NULL
+df.clean$AwayTeam <- NULL
+
+#We don't care who the kick team is, just
+#if the team is at home or away (homekick)
+df.clean$kickteam <- NULL
+df.clean$def <- NULL
+
+pairs(df.clean, gap=0)
+
+#Outliers visible in ydline vs distance
+plot(df.clean$ydline, df.clean$distance)
+#ydline is wrong on these
+df.clean[df.clean$ydline > 50,]
+#This is no problem because distance is fine and we are removing ydline
+#ydline and distance are equivelent
+df.clean$ydline <- NULL
+
+#----------RUN CONTINUOUS CORRELATION SECTION AND COME BACK HERE
+
+#timerem is correlated with qtr,min,sec
+#Creating a new column "Time Remaining in Quarter" (timeremqtr)
+df.clean$timeremqtr <- (df.clean$timerem - (4 - as.numeric(df.clean$qtr))*15*60)
+#Don't need min, sec: they are redundant
+df.clean$min <- NULL
+df.clean$sec <- NULL
+
+#kickdiff is correlated with offscore and defscore
+#We will just keep the difference in score
+df.clean$offscore <- NULL
+df.clean$defscore <- NULL
+
+xtabs(~qtr + down, data = df.clean)       #PROBLEM HERE, several 0's
+xtabs(~qtr + homekick, data = df.clean)   #PROBLEM HERE qtr 5, few values
+xtabs(~qtr + GOOD, data = df.clean)       #PROBLEM HERE qtr 5, few values
+xtabs(~down + homekick, data = df.clean)
+xtabs(~down + GOOD, data = df.clean)
+xtabs(~homekick + GOOD, data = df.clean)
+
+#Removing qtr because it is problematic, it does
+#not have enough of some values, see xtabs above
+df.clean$qtr <- NULL
+
+pairs(df.clean, gap=0)
 
 #-----------CORRELATION OF CONTINUOUS---------------------------------------------
 library(corrplot)
@@ -86,10 +129,6 @@ df.clean.highcor.matrix <- df.clean.allcor[df.clean.highcor.names, df.clean.high
 #Creates the high correlation graphic
 corrplot.mixed(df.clean.highcor.matrix, tl.col="black", tl.pos = "lt")
 
-#------CORRELATION OF CATEGORICAL------------------------------------------
-#MANTEL-HAENSZEL?
-
-
 #------CORRELATION OF MIXED------------------------------------------------
 library(ggplot2)
 
@@ -108,6 +147,48 @@ for(i in c(1:ncol(df.clean.num1)) )
   }
 }
 
+#Most questionable ones from visual inspection
+#timeremqtr, down
+plot <- ggplot(df.clean, aes(down, timeremqtr)) +
+  geom_boxplot() +
+  xlab("down") +
+  ylab("timeremqtr")
+print(plot)
+#Kruskal-Wallis ANOVA
+fit <- kruskal.test(timeremqtr~down, data = df.clean)
+fit
+
+#timerem, down
+plot <- ggplot(df.clean, aes(down, timerem)) +
+  geom_boxplot() +
+  xlab("down") +
+  ylab("timeremqtr")
+print(plot)
+#Kruskal-Wallis ANOVA
+fit <- kruskal.test(timerem~down, data = df.clean)
+fit
+
+#down, togo
+plot <- ggplot(df.clean, aes(down, togo)) +
+  geom_boxplot() +
+  xlab("down") +
+  ylab("timeremqtr")
+print(plot)
+fit <- kruskal.test(togo~down, data = df.clean)
+fit
+
+#Each of these ANOVAs indicate that the values are highly correlated
+#(all p-values <3.637e-07)
+
+#Because each of these are highly associated with 'down' we remove down
+df.clean$down <- NULL
+
+#------CORRELATION OF CATEGORICAL------------------------------------------
+#MANTEL-HAENSZEL?
+
+#pairs plot with GOOD colored into it
+pairs(df.clean[,c(1:5, 7)], col = (as.numeric(df.clean$GOOD)+1) )
+
 #-----LDA after correlation/collinear fixed?--------------------------------
 library(MASS)
 df.clean.lda <- lda(GOOD~., data = df.clean)
@@ -119,6 +200,8 @@ df.fit1 <- glm(GOOD~., data = df.clean, family=binomial(link="logit"))
 #EXAMPLE STEPWISE
 df.step <- step(df.fit1)
 summary(df.step)
+
+
 
 
 
