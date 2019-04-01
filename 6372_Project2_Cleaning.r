@@ -189,18 +189,46 @@ df.clean$down <- NULL
 #pairs plot with GOOD colored into it
 pairs(df.clean[,c(1:5, 7)], col = (as.numeric(df.clean$GOOD)+1) )
 
+#=============================OBJECTIVE 1=====================================
+
+#-----------------TRAINING/TEST SET FOR BOTH-----------------------------
+## 75% of the sample size
+smp_size <- floor(0.5 * nrow(df.clean))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(df.clean)), size = smp_size)
+df.train <- df.clean[train_ind, ]
+df.test <- df.clean[-train_ind, ]
+
+#-----Logistic Regression---------------------------------------------------
+library(caret)
+#JUST AN EXAMPLE
+# 5 fold cross validation
+train_control <- trainControl(method = "cv", number = 5)
+df.fit1 <- train(GOOD ~ ., data = df.clean, trControl = train_control, method = "glm", family=binomial())
+
+#EXAMPLE STEPWISE
+library(MASS)
+df.step <- stepAIC(df.fit1)
+summary(df.step)
+
+#=============================OBJECTIVE 2======================================
+
+# 5 fold cross validation
+train_control <- trainControl(method = "cv", number = 5)
+# Initial test with including all interaction terms
+df.fit2 <- train(GOOD ~ .^2, data = df.clean, trControl = train_control, method = "glm", family=binomial())
+# print cv scores
+summary(df.fit2)
+
+#Quick test
+df.step2 <- stepAIC(df.fit2)
+summary(df.step2)
+
+
+
 #-----LDA after correlation/collinear fixed?--------------------------------
 library(MASS)
 df.clean.lda <- lda(GOOD~., data = df.clean)
-
-#-----Logistic Regression---------------------------------------------------
-#JUST AN EXAMPLE
-df.fit1 <- glm(GOOD~., data = df.clean, family=binomial(link="logit"))
-
-#EXAMPLE STEPWISE
-df.step <- step(df.fit1)
-summary(df.step)
-
 
 
 
