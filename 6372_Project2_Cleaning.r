@@ -201,28 +201,26 @@ df.test <- df.clean[-train_ind, ]
 
 #-----Logistic Regression---------------------------------------------------
 library(caret)
+
+#+=+=+=+=+=TESTING TRYING TO USE HOMEKICK AS THE RESPONSE INSTEAD+=+=+=+=+=
+
 #JUST AN EXAMPLE
 # 5 fold cross validation
 train_control <- trainControl(method = "cv", number = 5)
-df.fit1 <- train(GOOD ~ ., data = df.clean, trControl = train_control, method = "glm", family=binomial())
-
-#EXAMPLE STEPWISE
-library(MASS)
-df.step <- stepAIC(df.fit1)
-summary(df.step)
+#Stepwise with the cross validation
+df.fit1 <- train(homekick ~ ., data = df.train, trControl = train_control, method = "glmStepAIC", family=binomial())
+summary(df.fit1)
 
 #=============================OBJECTIVE 2======================================
 
+#+=+=+=+=+=TESTING TRYING TO USE HOMEKICK AS THE RESPONSE INSTEAD+=+=+=+=+=
 # 5 fold cross validation
 train_control <- trainControl(method = "cv", number = 5)
 # Initial test with including all interaction terms
-df.fit2 <- train(GOOD ~ .^2, data = df.clean, trControl = train_control, method = "glm", family=binomial())
-# print cv scores
+df.fit2 <- train(homekick ~ .^2, data = df.train, trControl = train_control, method = "glmStepAIC", family=binomial())
+# print cv stepwise scores
 summary(df.fit2)
 
-#Quick test
-df.step2 <- stepAIC(df.fit2)
-summary(df.step2)
 
 
 
