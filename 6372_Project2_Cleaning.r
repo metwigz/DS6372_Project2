@@ -191,13 +191,23 @@ pairs(df.clean[,c(1:5, 7)], col = (as.numeric(df.clean$GOOD)+1) )
 
 #=============================OBJECTIVE 1=====================================
 
-#-----------------TRAINING/TEST SET FOR BOTH-----------------------------
-## 75% of the sample size
-smp_size <- floor(0.5 * nrow(df.clean))
+#------------------EQUAL % TRAINING SET-----------------------------
 set.seed(123)
-train_ind <- sample(seq_len(nrow(df.clean)), size = smp_size)
-df.train <- df.clean[train_ind, ]
-df.test <- df.clean[-train_ind, ]
+df.clean.f <- df.clean[df.clean$GOOD == 0,]
+df.clean.t <- df.clean[df.clean$GOOD == 1,]
+
+fsize <- floor(0.5 * nrow(df.clean[df.clean$GOOD == 0,]))
+df.train.f.ind <- sample(seq_len(nrow(df.clean.f)), size = fsize)
+df.train.t.ind <- sample(seq_len(nrow(df.clean.t)), size = fsize)
+df.train <- rbind(df.clean.f[df.train.f.ind,], df.clean.t[df.train.t.ind,])
+df.test <- rbind(df.clean.f[-df.train.f.ind,], df.clean.t[-df.train.t.ind,])
+
+#NORMAL TRAINING/TEST SET
+#smp_size <- floor(0.5 * nrow(df.clean))
+#set.seed(123)
+#train_ind <- sample(seq_len(nrow(df.clean)), size = smp_size)
+#df.train <- df.clean[train_ind, ]
+#df.test <- df.clean[-train_ind, ]
 
 #-----Logistic Regression---------------------------------------------------
 library(caret)
