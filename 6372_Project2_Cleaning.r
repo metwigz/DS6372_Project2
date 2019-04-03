@@ -256,8 +256,13 @@ summary(df.fit1)
 # 5 fold cross validation
 train_control <- trainControl(method = "cv", number = 5)
 # Initial test with including all interaction terms
-df.fit2 <- train(GOOD ~ .^2, data = df.train, trControl = train_control, method = "glmStepAIC", family=binomial())
+df.fit2 <- train(GOOD ~ .^2, data = df.train, trControl = train_control, method = "glmStepAIC", family=binomial(), trace = FALSE)
 # print cv stepwise scores
+summary(df.fit2)
+
+#Model with everything correctly added
+df.fit2 <- train(GOOD ~ distance,
+                 data = df.train, method = "glm", family = "binomial", trace = FALSE)
 summary(df.fit2)
 
 #===Just looking at training set
@@ -267,13 +272,15 @@ confusionMatrix(predict(df.fit2, newdata = df.test), df.test$GOOD)
 #cuts the prediction to match, and prints out the confusion matrix
 df.pred <- predict(df.fit2, newdata = df.train, type = "prob")[,2]
 df.cut <- printcutroc(df.fit2, df.pred, df.train$GOOD)
-df.pred <- as.factor(ifelse(df.pred >= cut, 1, 0))
+df.pred <- as.factor(ifelse(df.pred >= df.cut, 1, 0))
 confusionMatrix(df.pred, df.train$GOOD)
 
 #===Test set
 df.pred.test <- predict(df.fit2, newdata = df.test, type = "prob")[,2]
-df.pred.test <- as.factor(ifelse(df.pred.test >= cut, 1, 0))
+df.pred.test <- as.factor(ifelse(df.pred.test >= df.cut, 1, 0))
 confusionMatrix(df.pred.test, df.test$GOOD)
+
+
 
 #-----LDA after correlation/collinear fixed?--------------------------------
 library(MASS)
