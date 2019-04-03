@@ -260,11 +260,6 @@ df.fit2 <- train(GOOD ~ .^2, data = df.train, trControl = train_control, method 
 # print cv stepwise scores
 summary(df.fit2)
 
-#Model with everything correctly added
-df.fit2 <- train(GOOD ~ distance,
-                 data = df.train, method = "glm", family = "binomial", trace = FALSE)
-summary(df.fit2)
-
 #===Just looking at training set
 confusionMatrix(predict(df.fit2, newdata = df.test), df.test$GOOD)
 
