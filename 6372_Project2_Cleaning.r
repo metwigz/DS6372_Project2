@@ -189,6 +189,38 @@ df.clean$down <- NULL
 #pairs plot with GOOD colored into it
 pairs(df.clean[,c(1:5, 7)], col = (as.numeric(df.clean$GOOD)+1) )
 
+
+#------------ROC CURVE FUNCTION (EX in obj 2)----------------------
+#Function that prints the ROC curve
+#and returns the optimal cut value
+printcutroc = function(thefit, df.pred, y)
+{
+  library(ROCR)
+  pred <- prediction(df.pred, y)
+  roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+  auc.train <- performance(pred, measure = "auc")
+  auc.train <- auc.train@y.values
+  
+  #Plot ROC
+  plot(roc.perf)
+  abline(a=0, b= 1) #Ref line indicating poor performance
+  text(x = .40, y = .6,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+  
+  #Function to get the optimal place to cut (instead of 0.5)
+  opt.cut = function(perf, pred)
+  {
+    cut.ind = mapply(FUN=function(x, y, p)
+    {
+      d = (x - 0)^2 + (y-1)^2
+      ind = which(d == min(d))
+      c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+        cutoff = p[[ind]])
+    }, perf@x.values, perf@y.values, pred@cutoffs)
+  }
+  
+  #Returns the cut
+  opt.cut(roc.perf, pred)[3,]
+}
 #=============================OBJECTIVE 1=====================================
 
 #------------------EQUAL % TRAINING SET-----------------------------
@@ -228,11 +260,25 @@ df.fit2 <- train(GOOD ~ .^2, data = df.train, trControl = train_control, method 
 # print cv stepwise scores
 summary(df.fit2)
 
+#===Just looking at training set
 confusionMatrix(predict(df.fit2, newdata = df.test), df.test$GOOD)
+
+#Does the ROC curve plotting, gets the optimal cut point,
+#cuts the prediction to match, and prints out the confusion matrix
+df.pred <- predict(df.fit2, newdata = df.train, type = "prob")[,2]
+df.cut <- printcutroc(df.fit2, df.pred, df.train$GOOD)
+df.pred <- as.factor(ifelse(df.pred >= cut, 1, 0))
+confusionMatrix(df.pred, df.train$GOOD)
+
+#===Test set
+df.pred.test <- predict(df.fit2, newdata = df.test, type = "prob")[,2]
+df.pred.test <- as.factor(ifelse(df.pred.test >= cut, 1, 0))
+confusionMatrix(df.pred.test, df.test$GOOD)
 
 #-----LDA after correlation/collinear fixed?--------------------------------
 library(MASS)
 df.clean.lda <- lda(GOOD~., data = df.clean)
+
 
 
 
