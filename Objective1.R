@@ -358,3 +358,66 @@ text(x = .40, y = .6,paste("AUC = ", round(auc[[1]],3), sep = ""))
 auc
 
 
+
+######################### RANDOM FOREST ####################################
+
+
+# we will use the same df.train and df.test
+
+library(randomForest)
+
+df.train.rf.model <- randomForest(GOOD~., data = df.train)
+
+print(df.train.rf.model)
+
+# Call:
+#   randomForest(formula = GOOD ~ ., data = df.train) 
+# Type of random forest: classification
+# Number of trees: 500
+# No. of variables tried at each split: 2
+# 
+# OOB estimate of  error rate: 13.82%
+# Confusion matrix:
+#   0   1 class.error
+# 0 14  98  0.87500000
+# 1 17 703  0.02361111
+
+df.test.rf.pred <- predict(df.train.rf.model, type = "prob", newdata = df.test)
+rf.pred <- prediction(df.test.rf.pred[,2], df.test$GOOD)
+rf.perf = performance(rf.pred, measure = "tpr", x.measure = "fpr")
+
+auc <- performance(rf.pred, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+rf.important <- importance(df.train.rf.model)
+
+varImpPlot(df.train.rf.model)
+
+# looking at the importance plot distance, timeremqtr,timerem looks important, hence we wiil build model with these 3 predictors
+########### ----------Updated-------- ##########
+df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff, data = df.train)
+
+df.test.rf.pred.updated <- predict(df.train.rf.model.updated, type = "prob", newdata = df.test)
+rf.pred.updated <- prediction(df.test.rf.pred.updated[,2], df.test$GOOD)
+rf.perf.updated = performance(rf.pred.updated, measure = "tpr", x.measure = "fpr")
+
+auc <- performance(rf.pred.updated, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+
+#--
+
+# Based on the plot, LASSO models provides a better prediction and fit.
+plot(rf.perf, main="ROC Curve Comparison", col=1)
+# Adding all plots
+plot(perf.lasso, col=2, add=TRUE)
+plot(perf.forward,col=3 , add=TRUE)
+plot(perf.stepwise,col=4 ,add=TRUE)
+#plot(rf.perf.updated,col=5 ,add=TRUE)
+legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise"), 1:4)
+#legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise","RF Updated"), 1:5)
+abline(a=0, b=1 )
+
+
