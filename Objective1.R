@@ -155,23 +155,26 @@ coef(cv.lasso, cv.lasso$lambda.min)
 # > coef(cv.lasso, cv.lasso$lambda.1se)
 # 7 x 1 sparse Matrix of class "dgCMatrix"
 # 1
-# (Intercept)  3.89668290
+# (Intercept)  3.23393183
 # togo         .         
-# distance    -0.05147607
+# distance    -0.03604887
 # homekick1    .         
 # kickdiff     .         
 # timerem      .         
 # timeremqtr   .         
+
+##### This is the coeff that will be used for further model as the previous model will make it more biased on distance.
+
 # > coef(cv.lasso, cv.lasso$lambda.min)
 # 7 x 1 sparse Matrix of class "dgCMatrix"
 # 1
-# (Intercept)  6.3903385276
-# togo         0.0137347724
-# distance    -0.1150167105
-# homekick1   -0.1766540963
-# kickdiff     .           
-# timerem      .           
-# timeremqtr   0.0005262518
+# (Intercept)  5.853178820
+# togo         .          
+# distance    -0.099944889
+# homekick1   -0.161344892
+# kickdiff     .          
+# timerem      .          
+# timeremqtr   0.000287501
 
 
 
@@ -189,7 +192,7 @@ mean(predicted.classes == df.test.y)
 
 ####-------------CONFIDENCE INTERVAL of LASSO -----------------#########
 
-df.train.lasso.model.ci <- glmnet(df.train.x, df.train.y , family = "binomial", lambda = cv.lasso$lambda.min, standardize = FALSE)
+df.train.lasso.model.ci <- glmnet(df.train.x, df.train.y ,alpha=1, family = "binomial", lambda = cv.lasso$lambda.min, standardize = FALSE)
 
 # #lasso.ci.beta <- coef(df.train.lasso.model, s=df.train.lasso.model$)
 # df.train.x <- as.matrix(sapply(df.train.x, as.numeric))
@@ -220,15 +223,15 @@ out
 #   fixedLassoInf(x = df.train.x, y = df.train.y, beta = beta_hat, 
 #                 lambda = df.train.lasso.model.ci$lambda, family = "binomial")
 # 
-# Testing results at lambda = 0.012, with alpha = 0.100
+# Testing results at lambda = 0.007, with alpha = 0.100
 # 
-# Var    Coef  Z-score P-value LowConfPt UpConfPt LowTailArea UpTailArea
-# 1  -1.719  -67.367     NaN    -1.931   -1.684       0.000      0.050
-# 2  -4.549 -339.286       0     1.341      Inf       0.000      0.000
-# 3 -13.363  -59.902       0    12.812   13.727       0.049      0.050
-# 4  -0.075   -6.649       1    -0.204   -0.062       0.050      0.049
-# 5  -0.015 -134.944       0     0.011      Inf       0.000      0.000
-# 6  -0.041  -99.920       1      -Inf   -0.041       0.000      0.050
+# Var   Coef Z-score P-value LowConfPt UpConfPt LowTailArea UpTailArea
+# 1  0.010   0.386   0.699    -0.202    0.045       0.000      0.049
+# 2 -0.109  -8.148   0.000     0.083    0.131       0.049      0.049
+# 3 -0.308  -1.379   0.168    -0.244    0.676       0.049      0.048
+# 4  0.003   0.266   0.791    -0.125    0.016       0.050      0.049
+# 5  0.000  -0.284   0.776    -0.001    0.000       0.050      0.050
+# 6  0.001   1.358   0.174     0.000    0.001       0.050      0.048
 # 
 # Note: coefficients shown are partial regression coefficients
 
