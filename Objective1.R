@@ -14,6 +14,7 @@ library(ROCR)
 library(MASS)
 library(survey)
 library(selectiveInference)
+library(factoextra)
 
 
 #### ---------------SEED for reproducibility----------------
@@ -422,5 +423,126 @@ plot(perf.stepwise,col=4 ,add=TRUE)
 legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise"), 1:4)
 #legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise","RF Updated"), 1:5)
 abline(a=0, b=1 )
+
+
+#################### PCA ANALYSIS ##########################################
+
+
+# we will be using df.orig dataset for the PCA analysis.
+
+#####--------- Data cleaning for PCA --------------########
+str(df.orig)
+
+pca.orig.data <- na.omit(df.orig)
+
+#By logic and the websites, down has to be 1 and togo has to be 10
+pca.orig.data$down[pca.orig.data$HomeTeam == "ARI" & pca.orig.data$AwayTeam == "NYG" & pca.orig.data$GameDate == 20081123 & pca.orig.data$timerem == 1811] <- 1
+pca.orig.data$togo[pca.orig.data$HomeTeam == "ARI" & pca.orig.data$AwayTeam == "NYG" & pca.orig.data$GameDate == 20081123 & pca.orig.data$timerem == 1811] <- 10
+pca.orig.data$down[pca.orig.data$HomeTeam == "GB" & pca.orig.data$AwayTeam == "DET" & pca.orig.data$GameDate == 20081228 & pca.orig.data$timerem == 1807] <- 1
+pca.orig.data$togo[pca.orig.data$HomeTeam == "GB" & pca.orig.data$AwayTeam == "DET" & pca.orig.data$GameDate == 20081228 & pca.orig.data$timerem == 1807] <- 10
+pca.orig.data$timeremqtr <- (pca.orig.data$timerem - (4 - as.numeric(pca.orig.data$qtr))*15*60)
+
+pca.orig.data$qtr <- as.factor(pca.orig.data$qtr)
+pca.orig.data$down <- as.factor(pca.orig.data$down)
+pca.orig.data$GOOD <- as.factor(pca.orig.data$GOOD)
+pca.orig.data$homekick <- as.factor(pca.orig.data$homekick)
+pca.orig.data$Missed <- as.factor(pca.orig.data$Missed)
+pca.orig.data$Blocked <- as.factor(pca.orig.data$Blocked)
+
+
+pca.orig.data$min <- NULL
+pca.orig.data$sec <- NULL
+pca.orig.data$name <- NULL
+
+str(pca.orig.data)
+
+# removing categorical variables that has huge list like name, team name and convert them all to a numerical variable
+# few categorical variables are converted to one-hot vector eg GOOD, qtr, down and as numeric variables
+pca.clean <-data.frame(model.matrix(~. -kickteam -def -AwayTeam -HomeTeam -season -GameDate, data =  pca.orig.data))
+pca.clean <- pca.clean[,-1] # removing intercept created by model matrix
+pca.clean.cor <- cor(pca.clean, pca.clean, method = "pearson")
+
+#summary(pca.clean.cor)
+
+pairs(pca.clean)
+
+#library(corrplot)
+
+#calculating the total variance of the original data (clean data)
+sum(diag(cov(pca.clean)))
+#1081984
+
+##########------------ PCA Estimates--------------########
+
+# running the pca using prcomp tool
+pca.result <- prcomp(pca.clean, scale. = FALSE)
+pca.scores <- pca.result$x
+pairs(pca.scores)
+pca.variance <-apply(pca.scores,2,var)
+
+#calculating the total PCA cariance from the score, this matches with the 
+# total variance of the original data with no loss of information on total PCAs
+sum(pca.variance)
+#1081984
+
+#following code uses this package: library(factoextra)
+# this provies scree plot with the pc's
+fviz_eig(pca.result)
+
+## trying with scale true 
+#since Normalization is important in PCA since it is a variance maximizing exercise.
+# It projects the original data onto directions which maximize the variance. 
+#The first plot above shows the amount of total variance explained in the
+#different principal components wher we have not normalized the data. 
+#As you can see it seems like only component one explains all the variance in the data.
+
+#Here it is clear that the other components contribute as well.
+#The reason for this is because PCA seeks to maximize the variance of each component.
+pca.result.true <- prcomp(pca.clean, scale. = TRUE)
+pca.scores.true <- pca.result.true$x
+#pairs(pca.scores.true)
+pca.variance.true <-apply(pca.scores.true,2,var)
+sum(pca.variance.true)
+
+# this code provides scree plot with the pc's
+fviz_eig(pca.result.true)
+
+fviz_pca_var(pca.result.true,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+)
+
+
+#####----------PCA for Classification--------------
+str(pca.clean)
+head(pca.clean[,-17])
+
+pca.result.classify <- prcomp(pca.clean[,-17], scale. = TRUE)
+pca.result.classify.score <- pca.result.classify$x
+
+# adding back the response column for further analysis of the response column 
+#with the principle components
+pca.result.classify.score <- data.frame(pca.result.classify.score)
+pca.result.classify.score$GOOD1 <- pca.clean$GOOD1
+
+pairs(pca.result.classify.score, col=pca.result.classify.score$GOOD1)
+
+ggplot(data = pca.result.classify.score, aes(x = PC1, y = PC2)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC1vsPC2")
+
+ggplot(data = pca.result.classify.score, aes(x = PC2, y = PC3)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC2vsPC3")
+
+ggplot(data = pca.result.classify.score, aes(x = PC3, y = PC4)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC3vsPC4")
+
+ggplot(data = pca.result.classify.score, aes(x = PC4, y = PC5)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC4vsPC5")
+
 
 
