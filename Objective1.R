@@ -190,6 +190,22 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 # Model accuracy
 mean(predicted.classes == df.test.y)
 
+#---------------------------ADDED BY ZACK----------------------------
+#Confusion matrix before the change in cut location
+confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD) 
+
+#Does the ROC curve plotting, gets the optimal cut point,
+#cuts the prediction to match, and prints out the confusion matrix
+df.pred <- predict(df.train.lasso.model, newx = df.train.x, type = "response")
+df.cut <- printcutroc(df.train.lasso.model, df.pred, df.train$GOOD) #custom function from cleaning file
+df.pred <- as.factor(ifelse(df.pred >= df.cut, 1, 0))
+confusionMatrix(df.pred, df.train$GOOD) #confusion matrix of the training
+
+# Making prediction on test data using df.cut
+df.pred.test <- predict(df.train.lasso.model, newx = df.test.x, type = "response")
+df.pred.test <- as.factor(ifelse(df.pred.test >= df.cut, 1, 0))
+confusionMatrix(df.pred.test, df.test$GOOD) #confusion matrix of the test data
+#---------------------------END ADDED BY ZACK------------------------
 
 ####-------------CONFIDENCE INTERVAL of LASSO -----------------#########
 
