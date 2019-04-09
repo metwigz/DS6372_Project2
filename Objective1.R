@@ -191,20 +191,20 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 mean(predicted.classes == df.test.y)
 
 #---------------------------ADDED BY ZACK----------------------------
-#Confusion matrix before the change in cut location
-confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD) 
+# Confusion matrix before the change in cut location
+confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD)
 
-#Does the ROC curve plotting, gets the optimal cut point,
-#cuts the prediction to match, and prints out the confusion matrix
-df.pred <- predict(df.train.lasso.model, newx = df.train.x, type = "response")
-df.cut <- printcutroc(df.train.lasso.model, df.pred, df.train$GOOD) #custom function from cleaning file
-df.pred <- as.factor(ifelse(df.pred >= df.cut, 1, 0))
-confusionMatrix(df.pred, df.train$GOOD) #confusion matrix of the training
+# Does the ROC curve plotting, gets the optimal cut point,
+# cuts the prediction to match, and prints out the confusion matrix
+df.train.lasso.pred <- predict(df.train.lasso.model, newx = df.train.x, type = "response")
+df.lasso.cut <- printcutroc(df.train.lasso.model, df.train.lasso.pred, df.train$GOOD) #custom function from cleaning file
+df.train.lasso.pred <- as.factor(ifelse(df.train.lasso.pred >= df.lasso.cut, 1, 0))
+confusionMatrix(df.train.lasso.pred, df.train$GOOD) #confusion matrix of the training
 
-# Making prediction on test data using df.cut
-df.pred.test <- predict(df.train.lasso.model, newx = df.test.x, type = "response")
-df.pred.test <- as.factor(ifelse(df.pred.test >= df.cut, 1, 0))
-confusionMatrix(df.pred.test, df.test$GOOD) #confusion matrix of the test data
+# Making prediction and confusion matrix on test data using df.cut
+df.test.lasso.pred <- predict(df.train.lasso.model, newx = df.test.x, type = "response")
+df.test.lasso.pred <- as.factor(ifelse(df.test.lasso.pred >= df.lasso.cut, 1, 0))
+confusionMatrix(df.test.lasso.pred, df.test$GOOD) #confusion matrix of the test data
 #---------------------------END ADDED BY ZACK------------------------
 
 ####-------------CONFIDENCE INTERVAL of LASSO -----------------#########
@@ -298,6 +298,22 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 # Model accuracy
 mean(predicted.classes==df.test$GOOD)
 
+#---------------------------ADDED BY ZACK----------------------------
+# Confusion matrix before the change in cut location
+confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD)
+
+# Does the ROC curve plotting, gets the optimal cut point,
+# cuts the prediction to match, and prints out the confusion matrix
+df.train.step.pred <- predict(df.train.stepwise.model, df.train, type = "response")
+df.step.cut <- printcutroc(df.train.stepwise.model, df.train.step.pred, df.train$GOOD) #custom function from cleaning file
+df.train.step.pred <- as.factor(ifelse(df.train.step.pred >= df.step.cut, 1, 0))
+confusionMatrix(df.train.step.pred, df.train$GOOD) #confusion matrix of the training
+
+# Making prediction and confusion matrix on test data using df.cut
+df.test.step.pred <- predict(df.train.stepwise.model, df.test, type = "response")
+df.test.step.pred <- as.factor(ifelse(df.test.step.pred >= df.step.cut, 1, 0))
+confusionMatrix(df.test.step.pred, df.test$GOOD) #confusion matrix of the test data
+#---------------------------END ADDED BY ZACK------------------------
 
 ####---- Forward----
 # Forward feature selection removed all the features as non significant and added only distance as a significant feature with model AIC = 577.62
@@ -319,7 +335,22 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 # Model accuracy
 mean(predicted.classes==df.test$GOOD)
 
+#---------------------------ADDED BY ZACK----------------------------
+# Confusion matrix before the change in cut location
+confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD)
 
+# Does the ROC curve plotting, gets the optimal cut point,
+# cuts the prediction to match, and prints out the confusion matrix
+df.train.forw.pred <- predict(df.train.forward.model, df.train, type = "response")
+df.forw.cut <- printcutroc(df.train.forward.model, df.train.forw.pred, df.train$GOOD) #custom function from cleaning file
+df.train.forw.pred <- as.factor(ifelse(df.train.forw.pred >= df.forw.cut, 1, 0))
+confusionMatrix(df.train.forw.pred, df.train$GOOD) #confusion matrix of the training
+
+# Making prediction and confusion matrix on test data using df.cut
+df.test.forw.pred <- predict(df.train.forward.model, df.test, type = "response")
+df.test.forw.pred <- as.factor(ifelse(df.test.forw.pred >= df.forw.cut, 1, 0))
+confusionMatrix(df.test.forw.pred, df.test$GOOD) #confusion matrix of the test data
+#---------------------------END ADDED BY ZACK------------------------
 
 
 ############----------K-Fold Cross Validation-------------############
