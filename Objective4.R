@@ -402,7 +402,17 @@ fviz_pca_var(pca.result.true,
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE     # Avoid text overlapping
 )
-
+fviz_pca_var(pca.result,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+)
+# The above plot shows the difference between the variance of the original data and 
+# normalized data. we can clearly see that the Missed is 100% negatively correlated, this is 
+# because is just another representation of GOOD (response) variable, hence this variable can be 
+# eliminated from the dataset. Other values are distance, ydline and togo 
+# has significant correlation with the response (GOOD), they may have some significant explanation
+# for the response.
 
 #####----------PCA for Classification--------------
 str(pca.clean)
