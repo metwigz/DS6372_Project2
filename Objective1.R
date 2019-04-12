@@ -190,6 +190,9 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 # Model accuracy
 mean(predicted.classes == df.test.y)
 
+#Gets the coefficients of the lasso model
+coef(df.train.lasso.model)
+
 #---------------------------ADDED BY ZACK----------------------------
 # Confusion matrix before the change in cut location
 confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD)
@@ -201,6 +204,12 @@ df.lasso.cut <- printcutroc(df.train.lasso.model, df.train.lasso.pred, df.train$
 df.train.lasso.pred <- as.factor(ifelse(df.train.lasso.pred >= df.lasso.cut, 1, 0))
 confusionMatrix(df.train.lasso.pred, df.train$GOOD) #confusion matrix of the training
 
+#Prediction on the test set using the original cut point of 0.5
+df.test.lasso.pred <- predict(df.train.lasso.model, newx = df.test.x, type = "response")
+printcutroc(df.train.lasso.model, df.test.lasso.pred, df.test$GOOD) #ROC Curve
+df.test.lasso.pred <- as.factor(ifelse(df.test.lasso.pred >= 0.5, 1, 0))
+confusionMatrix(df.test.lasso.pred, df.test$GOOD) #confusion matrix of the test data on 0.5 cut point
+
 # Making prediction and confusion matrix on test data using df.cut
 df.test.lasso.pred <- predict(df.train.lasso.model, newx = df.test.x, type = "response")
 df.test.lasso.pred <- as.factor(ifelse(df.test.lasso.pred >= df.lasso.cut, 1, 0))
@@ -208,6 +217,10 @@ confusionMatrix(df.test.lasso.pred, df.test$GOOD) #confusion matrix of the test 
 #---------------------------END ADDED BY ZACK------------------------
 
 ####-------------CONFIDENCE INTERVAL of LASSO -----------------#########
+df.train.lasso.model.ci <- glm(GOOD ~ distance + homekick + timeremqtr, data = df.train, family = binomial)
+confint(df.train.lasso.model.ci)
+
+
 
 df.train.lasso.model.ci <- glmnet(df.train.x, df.train.y ,alpha=1, family = "binomial", lambda = cv.lasso$lambda.min, standardize = FALSE)
 
@@ -277,11 +290,18 @@ mean(predicted.classes.c == df.test.y.c)
 
 #########----------------Stepwise/Forward Logistic Regression-----------------#####
 
+fit.full <- glm(GOOD ~., data = df.train, family = binomial)
+fit.min <- glm(GOOD ~1, data = df.train, family = binomial)
+df.train.forward.model <- stepAIC(fit.min, direction = "forward",
+                                  scope=list(upper=fit.full, lower=fit.min), trace = FALSE)
+df.train.stepwise.model <- stepAIC(fit.min, direction = "both",
+                                  scope=list(upper=fit.full, lower=fit.min), trace = FALSE)
+
 # will be using df.train and df.test (calculated in the begining)
-df.train.forward.model <- glm(GOOD ~., data = df.train, family = binomial) %>%
-  stepAIC(trace = FALSE, direction = "forward")
-df.train.stepwise.model <- glm(GOOD ~., data = df.train, family = binomial) %>%
-  stepAIC(trace = FALSE)
+#df.train.forward.model <- glm(GOOD ~., data = df.train, family = binomial) %>%
+#  stepAIC(trace = FALSE, direction = "forward")
+#df.train.stepwise.model <- glm(GOOD ~., data = df.train, family = binomial) %>%
+#  stepAIC(trace = FALSE)
 
 ####---- Stepwise----
 # Stepwise feature selection removed all the features as non significant and added only distance as a significant feature with model AIC = 571.2
@@ -308,6 +328,12 @@ df.train.step.pred <- predict(df.train.stepwise.model, df.train, type = "respons
 df.step.cut <- printcutroc(df.train.stepwise.model, df.train.step.pred, df.train$GOOD) #custom function from cleaning file
 df.train.step.pred <- as.factor(ifelse(df.train.step.pred >= df.step.cut, 1, 0))
 confusionMatrix(df.train.step.pred, df.train$GOOD) #confusion matrix of the training
+
+#Making prediction on the test set using the original cut point of 0.5
+df.test.step.pred <- predict(df.train.stepwise.model, df.test, type = "response")
+printcutroc(df.train.stepwise.model, df.test.step.pred, df.test$GOOD) #custom function from cleaning file
+df.test.step.pred <- as.factor(ifelse(df.test.step.pred >= 0.5, 1, 0))
+confusionMatrix(df.test.step.pred, df.test$GOOD) #confusion matrix of the test data
 
 # Making prediction and confusion matrix on test data using df.cut
 df.test.step.pred <- predict(df.train.stepwise.model, df.test, type = "response")
@@ -345,6 +371,12 @@ df.train.forw.pred <- predict(df.train.forward.model, df.train, type = "response
 df.forw.cut <- printcutroc(df.train.forward.model, df.train.forw.pred, df.train$GOOD) #custom function from cleaning file
 df.train.forw.pred <- as.factor(ifelse(df.train.forw.pred >= df.forw.cut, 1, 0))
 confusionMatrix(df.train.forw.pred, df.train$GOOD) #confusion matrix of the training
+
+# Makeing prediction on test data with original cut of 0.5
+df.test.forw.pred <- predict(df.train.forward.model, df.test, type = "response")
+printcutroc(df.train.forward.model, df.test.forw.pred, df.test$GOOD) #Print ROC Curve
+df.test.forw.pred <- as.factor(ifelse(df.test.forw.pred >= 0.5, 1, 0))
+confusionMatrix(df.test.forw.pred, df.test$GOOD) #confusion matrix of the test data
 
 # Making prediction and confusion matrix on test data using df.cut
 df.test.forw.pred <- predict(df.train.forward.model, df.test, type = "response")
@@ -471,6 +503,11 @@ legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise"), 1:4
 #legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise","RF Updated"), 1:5)
 abline(a=0, b=1 )
 
+#ROC Plots for just LASSO, Forward, and Stepwise
+plot(perf.lasso, col=1)
+plot(perf.forward,col=2, add=TRUE)
+plot(perf.stepwise,col=3, add=TRUE)
+legend(0.7, 0.8, legend = c("LASSO", "Forward", "Stepwise"), 1:3)
 
 #################### PCA ANALYSIS ##########################################
 
