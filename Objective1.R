@@ -15,6 +15,7 @@ library(MASS)
 library(survey)
 library(selectiveInference)
 library(factoextra)
+library(randomForest)
 
 
 #### ---------------SEED for reproducibility----------------
@@ -195,7 +196,7 @@ coef(df.train.lasso.model)
 
 #---------------------------ADDED BY ZACK----------------------------
 # Confusion matrix before the change in cut location
-confusionMatrix(as.factor(as.vector(predicted.classes)), df.test$GOOD)
+
 
 # Does the ROC curve plotting, gets the optimal cut point,
 # cuts the prediction to match, and prints out the confusion matrix
@@ -453,6 +454,7 @@ df.train.rf.model <- randomForest(GOOD~., data = df.train)
 
 print(df.train.rf.model)
 
+
 # Call:
 #   randomForest(formula = GOOD ~ ., data = df.train) 
 # Type of random forest: classification
@@ -479,7 +481,9 @@ varImpPlot(df.train.rf.model)
 
 # looking at the importance plot distance, timeremqtr,timerem looks important, hence we wiil build model with these 3 predictors
 ########### ----------Updated-------- ##########
-df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff, data = df.train)
+df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff+togo, data = df.train)
+
+print(df.train.rf.model.updated)
 
 df.test.rf.pred.updated <- predict(df.train.rf.model.updated, type = "prob", newdata = df.test)
 rf.pred.updated <- prediction(df.test.rf.pred.updated[,2], df.test$GOOD)
@@ -489,6 +493,48 @@ auc <- performance(rf.pred.updated, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
 
+
+
+#probabilities <- df.train.forward.model %>% predict(df.test, type = "response")
+predicted.classes <- ifelse(df.test.rf.pred.updated[,2] > 0.5, 1, 0)
+# Model accuracy
+mean(predicted.classes==df.test$GOOD)
+#---------------------------Zack's code ADDED BY Satish----------------------------
+# Confusion matrix before the change in cut location
+confusionMatrix( as.factor(predicted.classes), df.test$GOOD)
+
+print(df.train.rf.model)
+
+print(df.train.rf.model.updated)
+
+# Does the ROC curve plotting, gets the optimal cut point,
+# cuts the prediction to match, and prints out the confusion matrix
+df.train.rf.pred.updated <- predict(df.train.rf.model.updated, type = "prob", newdata = df.train)
+df.rf.cut <- printcutroc(df.train.rf.model.updated, df.train.rf.pred.updated[,2], df.train$GOOD) #custom function from cleaning file
+df.train.rf.pred <- as.factor(ifelse(df.train.rf.pred.updated[,2] >= df.rf.cut, 1, 0))
+confusionMatrix(df.train.rf.pred, df.train$GOOD) #confusion matrix of the training
+
+# Making prediction and confusion matrix on test data using df.cut
+df.test.rf.pred.updated <- predict(df.train.rf.model.updated, type = "prob", newdata = df.test)
+df.rf.cut <- printcutroc(df.train.rf.model.updated, df.test.rf.pred.updated[,2], df.test$GOOD) #custom function from cleaning file
+df.test.rf.pred <- as.factor(ifelse(df.test.rf.pred.updated[,2] >= df.rf.cut, 1, 0))
+confusionMatrix(df.test.rf.pred, df.test$GOOD) #confusion matrix of the training
+
+# Makeing prediction on test data with original cut of 0.5
+df.test.rf.pred <- as.factor(ifelse(df.test.rf.pred.updated[,2] >= .5, 1, 0))
+confusionMatrix(df.test.rf.pred, df.test$GOOD) #confusion matrix of the training
+# 
+# # Makeing prediction on test data with original cut of 0.5
+# df.test.rf.pred <- predict(df.train.forward.model, df.test, type = "response")
+# printcutroc(df.train.forward.model, df.test.forw.pred, df.test$GOOD) #Print ROC Curve
+# df.test.rf.pred <- as.factor(ifelse(df.test.forw.pred >= 0.5, 1, 0))
+# confusionMatrix(df.test.forw.pred, df.test$GOOD) #confusion matrix of the test data
+# 
+# # Making prediction and confusion matrix on test data using df.cut
+# df.test.rf.pred <- predict(df.train.forward.model, df.test, type = "response")
+# df.test.rf.pred <- as.factor(ifelse(df.test.forw.pred >= df.forw.cut, 1, 0))
+# confusionMatrix(df.test.forw.pred, df.test$GOOD) #confusion matrix of the test data
+#---------------------------END ADDED BY Satish Zack's code ------------------------
 
 #--
 
