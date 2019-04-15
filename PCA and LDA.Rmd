@@ -81,9 +81,9 @@ ggplot(data = pc.scoresdf, aes(x = PC4, y = PC5)) +
 
 ###Perform LDA
 mylda <- lda(GOOD ~ ., data = df.train[,-3])
-pred<-predict(mylda,newdata=df.test)$class
-x<-table(pred,df.test$GOOD) # Creating a confusion matrix
-ME<-(x[2,1]+x[1,2])/1000 #Missclassification Error
+pred <- predict(mylda,newdata=df.test)$class
+x <- table(pred,df.test$GOOD) # Creating a confusion matrix
+ME <- (x[2,1]+x[1,2])/1000 #Missclassification Error
 ME
 1-ME #Calculating overall accuracy
 confusionMatrix(table(pred,df.test$GOOD))
@@ -115,19 +115,19 @@ confusionMatrix(table(pred,df.test$GOOD))
 ##-----NEED HELP------------Changing of cutpoints
 # Does the ROC curve plotting, gets the optimal cut point,
 # cuts the prediction to match, and prints out the confusion matrix
-df.train.lda.pred <- predict(mylda, df.train, type = "response")
+df.train.lda.pred <- predict(mylda, df.train, type = "response")$posterior[,2]
 df.lda.cut <- printcutroc(mylda, df.train.lda.pred, df.train$GOOD) #custom function from cleaning file
 df.train.lda.pred <- as.factor(ifelse(df.train.lda.pred >= df.lda.cut, 1, 0))
 confusionMatrix(df.train.lda.pred, df.train$GOOD) #confusion matrix of the training
 
 #Making prediction on the test set using the original cut point of 0.5
-df.test.lda.pred <- predict(mylda, df.test, type = "response")
+df.test.lda.pred <- predict(mylda, df.test, type = "response")$posterior[,2]
 printcutroc(df.train.lda.model, df.test.lda.pred, df.test$GOOD) #custom function from cleaning file
 df.test.lda.pred <- as.factor(ifelse(df.test.lda.pred >= 0.5, 1, 0))
 confusionMatrix(df.test.lda.pred, df.test$GOOD) #confusion matrix of the test data
 
 # Making prediction and confusion matrix on test data using df.cut
-df.test.lda.pred <- predict(mylda, df.test, type = "response")
+df.test.lda.pred <- predict(mylda, df.test, type = "response")$posterior[,2]
 df.test.lda.pred <- as.factor(ifelse(df.test.lda.pred >= df.step.cut, 1, 0))
 confusionMatrix(df.test.lda.pred, df.test$GOOD) #confusion matrix of the test data
 
