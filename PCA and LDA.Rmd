@@ -1,0 +1,135 @@
+---
+title: "PCAclean and LDA"
+output: html_document
+---
+##PCA is being use a an explanatory on our clean data set
+##-----Removing categorical variables because will be using PCA result to conduct LDA which does not use categorical variables
+```{r setup, echo = TRUE}
+summary(df.clean)
+table(df.clean$GOOD)
+pairs(df.clean[,-6],col=df.clean$GOOD)
+df.cleana<-df.clean[,-6]
+df.cleanb<-df.cleana[,-3]
+pairs(df.clean)
+summary(df.cleanb)
+var.raw<-apply(df.cleanb, 2,var)
+sum(var.raw)
+#[1] 1079767
+sum(diag(cov(df.cleanb)))
+#[1] 1079767
+pc.results<-prcomp(df.cleanb, scale. = TRUE)
+pc.scores<-pc.results$x
+pairs(pc.scores)
+cor(pc.scores)
+#Results
+#              PC1           PC2           PC3           PC4
+#PC1  1.000000e+00  4.129740e-16 -1.277877e-15 -1.940004e-16
+#PC2  4.129740e-16  1.000000e+00 -3.812075e-16 -7.469341e-17
+#PC3 -1.277877e-15 -3.812075e-16  1.000000e+00  2.760542e-16
+#PC4 -1.940004e-16 -7.469341e-17  2.760542e-16  1.000000e+00
+#PC5  1.437960e-15 -5.094949e-16  1.071865e-15  5.269905e-17
+              PC5
+#PC1  1.437960e-15
+#PC2 -5.094949e-16
+#PC3  1.071865e-15
+#PC4  5.269905e-17
+#PC5  1.000000e+00
+
+
+pc.results$rotation
+##Results
+#                   PC1        PC2         PC3         PC4
+#togo       -0.64061901  0.3020594 -0.04393397 -0.07325057
+#distance   -0.63014158  0.1072607 -0.41673734  0.02432487
+#kickdiff    0.07676893 -0.5775992 -0.71511429  0.24339723
+#timerem     0.24673954  0.6110972 -0.21137200  0.72139500
+#timeremqtr  0.35461953  0.4361130 -0.51800891 -0.64373108
+#                   PC5
+#togo       -0.70076499
+#distance    0.64587540
+#kickdiff   -0.29975823
+#timerem    -0.02430854
+#timeremqtr -0.03643465
+eigenvals<-(pc.results$sdev)^2
+plot(1:5,eigenvals/sum(eigenvals),type="l",main="Scree Plot",ylab="Prop. Var. Explained")
+cumulative.prop<-cumsum(eigenvals/sum(eigenvals))
+plot(1:5,cumulative.prop,type="l",main="Cumulative proportion",ylim=c(0,1))
+# looks like 4 variables princlple components explain 80% of the variance
+##Creating data frame for PC with response added back in
+pc.scoresdf <- data.frame(pc.scores)
+pc.scoresdf$GOOD1 <- df.clean$GOOD
+
+pairs(pc.scoresdf, col=pc.scoresdf$GOOD1)
+
+##Graphing of PC vs PC
+ggplot(data = pc.scoresdf, aes(x = PC1, y = PC2)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC1vsPC2")
+
+ggplot(data = pc.scoresdf, aes(x = PC2, y = PC3)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC2vsPC3")
+
+ggplot(data = pc.scoresdf, aes(x = PC3, y = PC4)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC3vsPC4")
+
+ggplot(data = pc.scoresdf, aes(x = PC4, y = PC5)) +
+  geom_point(aes(col=GOOD1), size=1)+
+  ggtitle("PCA of GOOD PC4vsPC5")
+
+
+###Perform LDA
+mylda <- lda(GOOD ~ ., data = df.train[,-3])
+pred<-predict(mylda,newdata=df.test)$class
+x<-table(pred,df.test$GOOD) # Creating a confusion matrix
+ME<-(x[2,1]+x[1,2])/1000 #Missclassification Error
+ME
+1-ME #Calculating overall accuracy
+confusionMatrix(table(pred,df.test$GOOD))
+#Confusion Matrix and Statistics
+#   
+#pred   0   1
+#   0   1   0
+#   1  26 180
+#                                          
+#               Accuracy : 0.8744          
+#                 95% CI : (0.8214, 0.9163)
+#    No Information Rate : 0.8696          
+#    P-Value [Acc > NIR] : 0.469           
+#                                          
+#                  Kappa : 0.0627          
+# Mcnemar's Test P-Value : 9.443e-07       
+#                                          
+#            Sensitivity : 0.037037        
+#            Specificity : 1.000000        
+#         Pos Pred Value : 1.000000        
+#         Neg Pred Value : 0.873786        
+#             Prevalence : 0.130435        
+#         Detection Rate : 0.004831        
+#   Detection Prevalence : 0.004831        
+#      Balanced Accuracy : 0.518519        
+                                          
+#       'Positive' Class : 0  
+
+##-----NEED HELP------------Changing of cutpoints
+# Does the ROC curve plotting, gets the optimal cut point,
+# cuts the prediction to match, and prints out the confusion matrix
+df.train.lda.pred <- predict(mylda, df.train, type = "response")
+df.lda.cut <- printcutroc(mylda, df.train.lda.pred, df.train$GOOD) #custom function from cleaning file
+df.train.lda.pred <- as.factor(ifelse(df.train.lda.pred >= df.lda.cut, 1, 0))
+confusionMatrix(df.train.lda.pred, df.train$GOOD) #confusion matrix of the training
+
+#Making prediction on the test set using the original cut point of 0.5
+df.test.lda.pred <- predict(mylda, df.test, type = "response")
+printcutroc(df.train.lda.model, df.test.lda.pred, df.test$GOOD) #custom function from cleaning file
+df.test.lda.pred <- as.factor(ifelse(df.test.lda.pred >= 0.5, 1, 0))
+confusionMatrix(df.test.lda.pred, df.test$GOOD) #confusion matrix of the test data
+
+# Making prediction and confusion matrix on test data using df.cut
+df.test.lda.pred <- predict(mylda, df.test, type = "response")
+df.test.lda.pred <- as.factor(ifelse(df.test.lda.pred >= df.step.cut, 1, 0))
+confusionMatrix(df.test.lda.pred, df.test$GOOD) #confusion matrix of the test data
+
+```
+
