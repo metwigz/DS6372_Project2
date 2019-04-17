@@ -16,7 +16,7 @@ library(survey)
 library(selectiveInference)
 library(factoextra)
 library(randomForest)
-
+library(MASS)
 
 #### ---------------SEED for reproducibility----------------
 set.seed(123)
@@ -52,6 +52,19 @@ plot(df.test$GOOD)
 ##------Building Model for Diagnostics-------
 model <- glm(GOOD~., data = df.train, family = binomial)
 
+df.train.assumption <- df.train
+
+df.train.assumption$togo_cu <- df.train.assumption$togo^3
+df.train.assumption$kickdiff_cu <- df.train.assumption$kickdiff^3
+df.train.assumption$timeremqtr_cu <- df.train.assumption$timeremqtr^3
+
+# df.train.assumption$togo_sq <- NULL
+# df.train.assumption$kickdiff_sq <- NULL
+# df.train.assumption$timeremqtr_sq <- NULL
+
+model <- glm(GOOD~down+togo_cu+distance+homekick+kickdiff_cu+timerem+timeremqtr_cu, data = df.train.assumption, family = binomial)
+#names(df.train)
+
 #getting the predicted probablities of each observation.
 probabilities <- predict(model, type = "response")
 
@@ -65,7 +78,8 @@ predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
 #we will check the linear relationship between continuous predictor variables and the logit of the outcome. 
 #we will be visually inspecting the scatter plot between each predictor and the logit values.
 
-diagData <- df.train %>% select_if(is.numeric)
+diagData <- df.train.assumption %>% select_if(is.numeric)
+#diagData <- df.train %>% select_if(is.numeric)
 pred <- colnames(diagData)
 
 diagData <- diagData %>% mutate(logit = log(probabilities/(1-probabilities))) %>%
@@ -79,8 +93,9 @@ ggplot(diagData, aes(logit, predictor.value))+
 
 
 ### ----- Influential values-----
-
-plot(model, which = 4, id.n = 3)
+par(mfrow=c(1,2))
+plot(model, which = c(4,5), id.n = 2)
+par(mfrow=c(1,1))
 
 model.data <- augment(model) %>% 
   mutate(index = 1:n()) 
@@ -120,8 +135,8 @@ vif(model)
 #As a rule of thumb, a VIF value that exceeds 5 or 10 indicates a problematic amount of collinearity. 
 #In our data there is no collinearity: all variables have a value of VIF well below 5.
 
-#      togo   distance   homekick   kickdiff    timerem timeremqtr 
-#1.084855   1.053335   1.057453   1.072351   1.038193   1.058535 
+# togo   distance   homekick   kickdiff    timerem timeremqtr 
+# 1.084855   1.053335   1.057453   1.072351   1.038193   1.058535 
 
 
 ##Final check
@@ -450,10 +465,24 @@ auc
 
 library(randomForest)
 
-df.train.rf.model <- randomForest(GOOD~., data = df.train)
+df.train.rf.model <- randomForest(GOOD~., data = df.train, ntree=1000)
 
 print(df.train.rf.model)
 
+varImpPlot(df.train.rf.model, main="Variable Importance")
+
+plot(df.train.rf.model , df.test$GOOD)
+abline (0,1)
+
+df.train.rf.model.tune <- tuneRF(x=df.train[,-7], y=df.train[,7], 
+       ntreeTry   = 100,
+       mtryStart  = 3,
+       stepFactor = 1.5,
+       improve    = 0.01,
+       trace      = FALSE)
+
+df.train.rf.model.tune <- tuneRF(x=df.train[,-7], y=df.train[,7], 
+                                 trace      = FALSE)
 
 # Call:
 #   randomForest(formula = GOOD ~ ., data = df.train) 
@@ -471,19 +500,48 @@ df.test.rf.pred <- predict(df.train.rf.model, type = "prob", newdata = df.test)
 rf.pred <- prediction(df.test.rf.pred[,2], df.test$GOOD)
 rf.perf = performance(rf.pred, measure = "tpr", x.measure = "fpr")
 
+
 auc <- performance(rf.pred, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
 
 rf.important <- importance(df.train.rf.model)
 
-varImpPlot(df.train.rf.model)
+varImpPlot(df.train.rf.model, main="Variable Importance")
 
 # looking at the importance plot distance, timeremqtr,timerem looks important, hence we wiil build model with these 3 predictors
 ########### ----------Updated-------- ##########
-df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff+togo, data = df.train)
+
+set.seed(123)
+oob.err=double(15)
+test.err=double(15)
+#mtry is no of Variables randomly chosen at each split
+for(mtry in 1:15) 
+{
+  #rf=randomForest(medv ~ . , data = Boston , subset = train,mtry=mtry,ntree=400)
+  rf <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff+togo, data = df.clean, mtry=mtry, ntree=1000, subset = df.train.index)
+  #mtry <- 1
+  oob.err[mtry] = rf$err.rate[nrow(rf$err.rate), "OOB"] #Error of all Trees fitted
+  
+  pred<-predict(rf,df.clean[-df.train.index,]) #Predictions on Test Set for each Tree
+  test.err[mtry]= mean((as.numeric((df.clean[-df.train.index,])$GOOD) - as.numeric(pred))^2) #Mean Squared Test Error
+  
+  #cat(mtry," ") #printing the output to the console
+  
+}
+matplot(1:mtry , oob.err, pch=19 , col=c("red"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split", main="OOB Error at different mtry")
+matplot(1:mtry , cbind(oob.err,test.err), pch=19 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split", main="OOB Error Vs Test Error")
+legend("bottomright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
+
+
+set.seed(123)
+df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff+togo, data = df.clean, subset = df.train.index, importance=TRUE, mtry=2, ntree=400)
+
+#df.train.rf.model.updated <- randomForest(GOOD~distance+timeremqtr+timerem+kickdiff+togo, data = df.train, importance=TRUE, mtry=2)
 
 print(df.train.rf.model.updated)
+
+summary(df.train.rf.model.updated)
 
 df.test.rf.pred.updated <- predict(df.train.rf.model.updated, type = "prob", newdata = df.test)
 rf.pred.updated <- prediction(df.test.rf.pred.updated[,2], df.test$GOOD)
@@ -492,8 +550,6 @@ rf.perf.updated = performance(rf.pred.updated, measure = "tpr", x.measure = "fpr
 auc <- performance(rf.pred.updated, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
-
-
 
 #probabilities <- df.train.forward.model %>% predict(df.test, type = "response")
 predicted.classes <- ifelse(df.test.rf.pred.updated[,2] > 0.5, 1, 0)
@@ -540,6 +596,7 @@ confusionMatrix(df.test.rf.pred, df.test$GOOD) #confusion matrix of the training
 
 # Based on the plot, LASSO models provides a better prediction and fit.
 plot(rf.perf, main="ROC Curve Comparison", col=1)
+abline(a=0, b=1 )
 # Adding all plots
 plot(perf.lasso, col=2, add=TRUE)
 plot(perf.forward,col=3 , add=TRUE)
@@ -547,7 +604,7 @@ plot(perf.stepwise,col=4 ,add=TRUE)
 #plot(rf.perf.updated,col=5 ,add=TRUE)
 legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise"), 1:4)
 #legend(0.6, 0.6, legend = c("RandomForest", "LASSO", "Forward", "Stepwise","RF Updated"), 1:5)
-abline(a=0, b=1 )
+
 
 #ROC Plots for just LASSO, Forward, and Stepwise
 plot(perf.lasso, col=1)
